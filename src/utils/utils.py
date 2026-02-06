@@ -1,5 +1,3 @@
-import datetime
-import json
 import os
 import warnings
 import logging
@@ -14,6 +12,7 @@ warnings.filterwarnings(action="ignore")  # <--- ignore after imports
 
 def mp42wav(audio_file):
     command = f"ffmpeg -i {audio_file}.mp4 {audio_file}.wav >/dev/null 2>&1"
+    os.system(f"rm {audio_file}.wav >/dev/null 2>&1")
     os.system(command)
 
 
@@ -35,3 +34,9 @@ def cut_blanks(audio_file, min_silence_len, silence_thresh):
         # print("exporting", out_file)
         chunk.export(out_file, format="wav")
     return len(audio_chunks)
+
+
+def audio_paths(audio_file):
+    audio_file_dir = "/".join(audio_file.split("/")[:-1])
+    audio_file_name = audio_file.split("/")[-1]
+    return audio_file_dir, audio_file_name
