@@ -1,0 +1,27 @@
+name: ForceAlignmentCutter
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.11
+  - ipykernel
+  - notebook
+  - pip
+  - requests
+  - torchaudio
+  - cuda-toolkit
+  - transformers
+  - python-dotenv
+  - pytest-runner
+  - conda-forge::pytorch
+  - sentence-transformers
+  - sentencepiece
+  - yt-dlp
+  - ipywidgets
+  - montreal-forced-aligner
+  - spacy-pkuseg
+  - pip:
+    - dragonmapper
+    - hanziconv
+    - faster-whisper
