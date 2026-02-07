@@ -6,15 +6,19 @@ init_debian:
 	-sudo apt-get -y upgrade
 	git config --global user.name $(git_user_name)
 	git config --global user.email $(git_user_email)
+	sudo apt install ffmpeg
 
 init_mac:
 	brew update
 	brew upgrade
 	git config --global user.name $(git_user_name)
 	git config --global user.email $(git_user_email)
+	brew install ffmpeg
 
 conda_create:
 	conda env create -f environment.yml
+	conda run --no-capture-output -n ForceAlignmentCutter mfa model download dictionary mandarin_china_mfa
+	conda run --no-capture-output -n ForceAlignmentCutter mfa model download acoustic mandarin_mfa
 
 conda_update:
 	conda env update -f environment.yml --prune

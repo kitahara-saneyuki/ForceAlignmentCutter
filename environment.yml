@@ -7,8 +7,15 @@ dependencies:
   - python=3.11
   - ipykernel
   - notebook
+  - sox
+  - libsndfile
+  - swig
+  - bzip2
+  - libflac
+  - bc
   - pip
   - requests
+  - pydub
   - torchaudio
   - cuda-toolkit
   - transformers
