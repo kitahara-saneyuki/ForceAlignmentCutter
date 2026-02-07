@@ -40,3 +40,10 @@ def audio_paths(audio_file):
     audio_file_dir = "/".join(audio_file.split("/")[:-1])
     audio_file_name = audio_file.split("/")[-1]
     return audio_file_dir, audio_file_name
+
+
+def format_duration(seconds):
+    minutes = int(seconds // 60)
+    seconds = int(seconds % 60)
+    milliseconds = int((seconds % 1) * 1000)
+    return f"{minutes:02d}:{seconds:02d}:{milliseconds:03d}"
