@@ -10,9 +10,9 @@ logger.setLevel(logging.CRITICAL)
 warnings.filterwarnings(action="ignore")  # <--- ignore after imports
 
 
-def mp42wav(audio_file):
-    command = f"ffmpeg -i {audio_file}.mp4 {audio_file}.wav >/dev/null 2>&1"
-    os.system(f"rm {audio_file}.wav >/dev/null 2>&1")
+def mp42m4a(audio_file):
+    command = f"ffmpeg -i {audio_file}.mp4 -vn -acodec copy {audio_file}.m4a >/dev/null 2>&1"
+    os.system(f"rm {audio_file}.m4a >/dev/null 2>&1")
     os.system(command)
 
 
@@ -21,7 +21,7 @@ def cut_blanks(audio_file, min_silence_len, silence_thresh):
     audio_file_name = audio_file.split("/")[-1]
     os.system(f"rm -rf {audio_file_dir}/chunks/ >/dev/null 2>&1")
     os.system(f"mkdir -p {audio_file_dir}/chunks/ >/dev/null 2>&1")
-    sound_file = AudioSegment.from_wav(f"{audio_file}.wav")
+    sound_file = AudioSegment.from_file(f"{audio_file}.m4a", format="m4a")
     audio_chunks = split_on_silence(
         sound_file,
         # must be silent for at least 150 ms
