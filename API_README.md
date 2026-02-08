@@ -33,7 +33,24 @@ FastAPI-based web service for audio processing, ASR transcription, and forced al
 
 ## Installation
 
-### 1. Install FastAPI Dependencies
+### Option 1: Docker (Recommended)
+
+**Quick Start:**
+```bash
+# Development mode
+make docker-up
+# Open http://localhost:8000/static/index.html
+
+# Production mode (with Nginx)
+make docker-prod-up
+# Open http://localhost/static/index.html
+```
+
+See [DOCKER.md](DOCKER.md) for complete Docker deployment guide.
+
+### Option 2: Conda Environment
+
+#### 1. Install FastAPI Dependencies
 
 ```bash
 conda activate ForceAlignmentCutter
@@ -46,7 +63,7 @@ Or update the conda environment:
 conda env update -f environment.yml
 ```
 
-### 2. Create Upload Directory
+#### 2. Create Upload Directory
 
 ```bash
 mkdir -p uploads

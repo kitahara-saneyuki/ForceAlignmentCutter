@@ -2,17 +2,53 @@
 
 A Python-based audio processing pipeline for Chinese (Mandarin) speech transcription, forced alignment, and audio editing. This tool converts video files to audio, segments them based on silence, transcribes using Whisper ASR, performs forced alignment using Montreal Forced Aligner (MFA), and enables manual editing of transcriptions to generate precisely aligned audio files.
 
+## Deployment Options
+
+### 🐳 Docker (Recommended for Production)
+**NEW**: Containerized deployment with Docker and Docker Compose.
+
+**Quick Start:**
+```bash
+# Development
+make docker-up
+
+# Production (with Nginx)
+make docker-prod-up
+```
+
+**Benefits:**
+- ✅ Consistent environment across systems
+- ✅ GPU support with NVIDIA Container Toolkit
+- ✅ Production-ready with Nginx reverse proxy
+- ✅ Easy scaling and deployment
+
+See [DOCKER.md](DOCKER.md) for complete Docker deployment guide.
+
+### 🐍 Conda (Development)
+Traditional Conda environment for local development.
+
+```bash
+make conda_create
+make run_api
+```
+
 ## Available Interfaces
 
 ### 🌐 Web API (FastAPI)
-**NEW**: Process audio files through a RESTful API with real-time progress updates via Server-Sent Events (SSE).
+Process audio files through a RESTful API with real-time progress updates via Server-Sent Events (SSE).
 
 - **Web Interface**: Simple HTML/JS client at `http://localhost:8000/static/index.html`
 - **REST API**: RESTful endpoints for file upload, processing, and download
 - **Real-time Progress**: SSE streaming for live processing updates
 - **Interactive Docs**: Auto-generated API documentation at `http://localhost:8000/docs`
 
-**Quick Start:**
+**With Docker:**
+```bash
+make docker-up
+# Open http://localhost:8000/static/index.html
+```
+
+**With Conda:**
 ```bash
 make run_api
 # Open http://localhost:8000/static/index.html

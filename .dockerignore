@@ -1,5 +1,4 @@
 # Python
-*.pyc
 __pycache__/
 *.py[cod]
 *$py.class
@@ -10,8 +9,9 @@ dist/
 build/
 *.egg
 
-# Jupyter Notebook
+# Jupyter
 .ipynb_checkpoints/
+*.ipynb
 
 # Environment
 .env
@@ -32,30 +32,25 @@ ENV/
 Thumbs.db
 
 # Project specific
-youtube/
-uploads/
+uploads/*
+youtube/*
 *.m4a
 *.mp4
 *.wav
+*.srt
 *.json
-!environment.yml
-!package.json
 chunks/
 
-# Docker
-.docker/
-docker-compose.override.yml
+# Git
+.git/
+.gitignore
 
-# Logs
-*.log
-logs/
-nginx/logs/
+# Documentation
+*.md
+!README.md
+!API_README.md
 
-# SSL certificates
-nginx/ssl/*.key
-nginx/ssl/*.pem
-nginx/ssl/*.crt
-
-# Secrets
-secrets/
-.secrets
+# Other
+.pytest_cache/
+.coverage
+htmlcov/
