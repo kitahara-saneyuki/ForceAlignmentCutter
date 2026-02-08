@@ -2,6 +2,32 @@
 
 A Python-based audio processing pipeline for Chinese (Mandarin) speech transcription, forced alignment, and audio editing. This tool converts video files to audio, segments them based on silence, transcribes using Whisper ASR, performs forced alignment using Montreal Forced Aligner (MFA), and enables manual editing of transcriptions to generate precisely aligned audio files.
 
+## Available Interfaces
+
+### 🌐 Web API (FastAPI)
+**NEW**: Process audio files through a RESTful API with real-time progress updates via Server-Sent Events (SSE).
+
+- **Web Interface**: Simple HTML/JS client at `http://localhost:8000/static/index.html`
+- **REST API**: RESTful endpoints for file upload, processing, and download
+- **Real-time Progress**: SSE streaming for live processing updates
+- **Interactive Docs**: Auto-generated API documentation at `http://localhost:8000/docs`
+
+**Quick Start:**
+```bash
+make run_api
+# Open http://localhost:8000/static/index.html
+```
+
+See [API_README.md](API_README.md) for detailed API documentation.
+
+### 📓 Jupyter Notebook
+Traditional notebook interface for step-by-step audio processing.
+
+```bash
+conda activate ForceAlignmentCutter
+jupyter notebook src/asr.ipynb
+```
+
 ## Audio Processing Pipeline
 
 1.  Preprocessing:

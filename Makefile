@@ -19,6 +19,12 @@ conda_update:
 conda_remove:
 	conda remove -y -n ForceAlignmentCutter --all
 
+run_api:
+	./start_server.sh
+
+run_api_dev:
+	conda run --no-capture-output -n ForceAlignmentCutter uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+
 run_server:
 	conda run --no-capture-output -n ForceAlignmentCutter gunicorn -k uvicorn.workers.UvicornWorker src.main:app
 
