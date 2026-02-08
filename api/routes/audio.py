@@ -84,7 +84,7 @@ async def init_chunked_upload(
     return {
         "task_id": task_id,
         "filename": filename,
-        "chunk_size": 5 * 1024 * 1024,  # 5MB
+        "chunk_size": 500 * 1024,  # 500KB
         "message": "Chunked upload initialized"
     }
 
@@ -189,16 +189,19 @@ async def process_audio_background(
         # Create ASR service
         asr_service = ASRService(model_name=asr_model)
         
-        # Create progress callback
+        # Create progress callback that works in executor threads
+        loop = asyncio.get_running_loop()
         def progress_callback(message: str):
-            asyncio.create_task(task_manager.add_progress(task_id, message))
+            asyncio.run_coroutine_threadsafe(
+                task_manager.add_progress(task_id, message),
+                loop
+            )
         
         # Process audio file
         await task_manager.update_status(task_id, ProcessingStatus.CHUNKING)
         await task_manager.add_progress(task_id, "Starting audio processing pipeline...")
         
         # Run synchronous processing in executor
-        loop = asyncio.get_event_loop()
         combined_audio, combined_json = await loop.run_in_executor(
             None,
             asr_service.process_audio_file,
@@ -296,12 +299,15 @@ async def align_audio_background(
         with open(edited_json_path, 'w', encoding='utf-8') as f:
             json.dump(edited_json, f, ensure_ascii=False, indent=2)
         
-        # Create progress callback
+        # Create progress callback that works in executor threads
+        loop = asyncio.get_running_loop()
         def progress_callback(message: str):
-            asyncio.create_task(task_manager.add_progress(task_id, message))
+            asyncio.run_coroutine_threadsafe(
+                task_manager.add_progress(task_id, message),
+                loop
+            )
         
         # Run alignment in executor
-        loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
             AudioService.align_audio_with_edited_json,

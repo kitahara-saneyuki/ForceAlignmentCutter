@@ -139,11 +139,23 @@ class TaskManager:
                     "data": result
                 })
     
-    def create_progress_callback(self, task_id: str) -> Callable:
-        """Create a progress callback function for a task."""
+    def create_progress_callback(self, task_id: str, loop=None) -> Callable:
+        """Create a thread-safe progress callback function for a task."""
+        if loop is None:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                # No running loop, create task directly (will fail if called from thread)
+                def callback(message: str):
+                    asyncio.create_task(self.add_progress(task_id, message))
+                return callback
+        
         def callback(message: str):
-            # Create async task to add progress
-            asyncio.create_task(self.add_progress(task_id, message))
+            # Schedule coroutine on the main event loop from any thread
+            asyncio.run_coroutine_threadsafe(
+                self.add_progress(task_id, message),
+                loop
+            )
         return callback
     
     def cleanup_task(self, task_id: str, keep_task_hours: int = 24):

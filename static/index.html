@@ -425,8 +425,8 @@
             uploadText.textContent = '⏳ Initializing upload...';
             fileName.textContent = '';
             
-            // Chunk size: 5MB
-            const CHUNK_SIZE = 5 * 1024 * 1024;
+            // Chunk size: 500KB
+            const CHUNK_SIZE = 500 * 1024;
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             
             try {
