@@ -39,7 +39,9 @@ WORKDIR /app
 COPY environment.yml .
 
 # Create conda environment
-RUN conda env create -f environment.yml && \
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
+    conda env create -f environment.yml && \
     conda clean -afy
 
 # Activate environment and download MFA models
