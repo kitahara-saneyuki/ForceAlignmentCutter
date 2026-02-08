@@ -46,9 +46,6 @@ class ASRService:
         progress_callback: Optional[Callable] = None
     ) -> List[Dict]:
         """Transcribe audio file using Whisper ASR."""
-        if progress_callback:
-            progress_callback(f"Transcribing {os.path.basename(audio_file)}...")
-        
         if self.model is None:
             self.load_model()
         
@@ -69,10 +66,6 @@ class ASRService:
             start_time_str = format_to_srt(segment.start)
             end_time_str = format_to_srt(segment.end)
             sub_text = replace_special_chars(segment.text)
-            
-            if progress_callback:
-                progress_callback(f"[{segment.start:.2f}s → {segment.end:.2f}s] {sub_text}")
-            
             sub_entry = {
                 "start_time_str": start_time_str,
                 "end_time_str": end_time_str,
@@ -81,10 +74,6 @@ class ASRService:
             sub_list.append(sub_entry)
         
         self._generate_subtitles(audio_file, sub_list, subtitle_format)
-        
-        if progress_callback:
-            progress_callback(f"Saved: {os.path.abspath(f'{audio_file}.{subtitle_format}')}")
-        
         return sub_list
     
     @staticmethod

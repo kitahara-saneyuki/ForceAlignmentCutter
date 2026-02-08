@@ -148,9 +148,6 @@ class AudioService:
         cumulative_time = 0.0
 
         for i in range(chunks):
-            if progress_callback:
-                progress_callback(f"Processing chunk {i+1}/{chunks}")
-            
             chunk_audio_file = f"{audio_file_dir}/chunks/{audio_file_name}_chunk{i}"
             wav_file_path = f"{chunk_audio_file}.wav"
             json_file_path = f"{chunk_audio_file}.json"
