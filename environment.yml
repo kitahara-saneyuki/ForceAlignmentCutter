@@ -4,35 +4,61 @@ channels:
   - pytorch
   - nvidia
 dependencies:
-  - python=3.11
-  - ipykernel
-  - notebook
-  - sox
-  - libsndfile
-  - swig
-  - bzip2
-  - libflac
-  - bc
-  - pip
-  - requests
-  - pydub
-  - torchaudio
-  - cuda-toolkit
-  - transformers
-  - python-dotenv
-  - pytest-runner
-  - conda-forge::pytorch
-  - sentence-transformers
-  - sentencepiece
-  - yt-dlp
-  - ipywidgets
-  - montreal-forced-aligner
-  - spacy-pkuseg
+  # Python
+  - python=3.11.8
+  
+  # Jupyter and development tools
+  - ipykernel=6.29.2
+  - notebook=7.1.0
+  - ipywidgets=8.1.2
+  
+  # Audio processing libraries
+  - sox=14.4.2
+  - libsndfile=1.2.2
+  - libflac=1.4.3
+  - ffmpeg=6.1.1
+  - pydub=0.25.1
+  
+  # Build tools
+  - swig=4.2.1
+  - bzip2=1.0.8
+  - bc=1.07.1
+  
+  # PyTorch and CUDA
+  - pytorch=2.2.1
+  - pytorch-cuda=12.1
+  - torchaudio=2.2.1
+  - cuda-toolkit=12.1.1
+  
+  # Machine learning libraries
+  - transformers=4.37.2
+  - sentence-transformers=2.3.1
+  - sentencepiece=0.1.99
+  
+  # NLP and ASR tools
+  - montreal-forced-aligner=3.0.1
+  - spacy-pkuseg=0.0.32
+  
+  # FastAPI and web server
+  - fastapi=0.109.2
+  - uvicorn=0.27.1
+  - python-multipart=0.0.9
+  - aiofiles=23.2.1
+  - pydantic=2.6.1
+  - starlette=0.36.3
+  
+  # Utilities
+  - requests=2.31.0
+  - python-dotenv=1.0.1
+  - yt-dlp=2024.2.1
+  - pytest-runner=6.0.1
+  - pip=24.0
+  
+  # Pip-only dependencies (not available or better from PyPI)
   - pip:
-    - dragonmapper
-    - hanziconv
-    - faster-whisper
-    - fastapi==0.109.0
-    - uvicorn[standard]==0.27.0
-    - python-multipart==0.0.6
-    - aiofiles==23.2.1
+    - dragonmapper==0.2.6
+    - hanziconv==0.3.2
+    - faster-whisper==1.0.1
+    - httpx==0.27.0
+    - anyio==4.3.0
+    - h11==0.14.0
