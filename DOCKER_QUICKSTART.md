@@ -44,13 +44,13 @@ make docker-prod-down
 
 ### View running containers
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 ### Shell access
 ```bash
 make docker-shell
-# Or: docker-compose exec fastapi bash
+# Or: docker compose exec fastapi bash
 ```
 
 ### Restart services
@@ -65,25 +65,25 @@ make docker-clean
 
 ### Check GPU availability
 ```bash
-docker-compose exec fastapi nvidia-smi
+docker compose exec fastapi nvidia-smi
 ```
 
-### Manual docker-compose commands
+### Manual docker compose commands
 ```bash
 # Start
-docker-compose up -d
+docker compose up -d
 
 # Stop
-docker-compose down
+docker compose down
 
 # Rebuild
-docker-compose build --no-cache
+docker compose build --no-cache
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Scale workers (if using worker service)
-docker-compose up -d --scale worker=3
+docker compose up -d --scale worker=3
 ```
 
 ## Troubleshooting
@@ -91,12 +91,12 @@ docker-compose up -d --scale worker=3
 ### Container won't start
 ```bash
 # Check logs
-docker-compose logs fastapi
+docker compose logs fastapi
 
 # Remove and rebuild
-docker-compose down -v
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down -v
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### GPU not detected
@@ -116,7 +116,7 @@ lsof -i :8000
 # Kill process
 kill -9 <PID>
 
-# Or change port in docker-compose.yml
+# Or change port in docker compose.yml
 ```
 
 ### Permission issues
@@ -129,7 +129,7 @@ chmod -R 755 uploads/
 ## File Locations
 
 - **Dockerfile**: Main container definition
-- **docker-compose.yml**: Development orchestration
+- **docker compose.yml**: Development orchestration
 - **docker-compose.prod.yml**: Production orchestration
 - **docker-entrypoint.sh**: Container startup script
 - **.dockerignore**: Files excluded from image
@@ -147,10 +147,10 @@ cp .env.example .env
 ## Performance
 
 ### CPU Only (no GPU)
-Comment out `deploy` section in docker-compose.yml
+Comment out `deploy` section in docker compose.yml
 
 ### More workers
-Edit `command` in docker-compose.yml:
+Edit `command` in docker compose.yml:
 ```yaml
 command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
@@ -175,7 +175,7 @@ curl http://localhost:8000/health
 
 ### Nginx status
 ```bash
-docker-compose exec nginx nginx -t
+docker compose exec nginx nginx -t
 ```
 
 ## Backup & Restore

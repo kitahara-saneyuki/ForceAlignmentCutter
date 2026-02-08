@@ -16,7 +16,7 @@ This guide covers deploying ForceAlignmentCutter using Docker and Docker Compose
 ```bash
 make docker-build
 # Or: ./docker.sh build
-# Or: docker-compose build
+# Or: docker compose build
 ```
 
 ### 2. Start the Services
@@ -25,14 +25,14 @@ make docker-build
 ```bash
 make docker-up
 # Or: ./docker.sh up
-# Or: docker-compose up -d
+# Or: docker compose up -d
 ```
 
 **Production Mode** (with Nginx reverse proxy):
 ```bash
 make docker-prod-up
 # Or: ./docker.sh prod-up
-# Or: docker-compose -f docker-compose.prod.yml up -d
+# Or: docker compose -f docker-compose.prod.yml up -d
 ```
 
 ### 3. Access the Application
@@ -52,7 +52,7 @@ make docker-prod-up
 ```bash
 make docker-logs
 # Or: ./docker.sh logs
-# Or: docker-compose logs -f
+# Or: docker compose logs -f
 ```
 
 ### 5. Stop the Services
@@ -60,7 +60,7 @@ make docker-logs
 ```bash
 make docker-down
 # Or: ./docker.sh down
-# Or: docker-compose down
+# Or: docker compose down
 ```
 
 ## Docker Commands Reference
@@ -171,7 +171,7 @@ DEFAULT_SILENCE_THRESH=-60
 
 **Enable GPU support** (requires NVIDIA Container Toolkit):
 
-The GPU is enabled by default in `docker-compose.yml`:
+The GPU is enabled by default in `docker compose.yml`:
 
 ```yaml
 deploy:
@@ -183,7 +183,7 @@ deploy:
           capabilities: [gpu]
 ```
 
-**To disable GPU** (use CPU only), comment out the `deploy` section in `docker-compose.yml`.
+**To disable GPU** (use CPU only), comment out the `deploy` section in `docker compose.yml`.
 
 ### Volume Mounts
 
@@ -236,7 +236,7 @@ make docker-prod-up
 make docker-prod-logs
 
 # Check container status
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 # View resource usage
 docker stats
@@ -257,19 +257,19 @@ If this fails, install [NVIDIA Container Toolkit](https://docs.nvidia.com/datace
 
 **View detailed logs:**
 ```bash
-docker-compose logs fastapi
+docker compose logs fastapi
 ```
 
 **Check container status:**
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 **Rebuild image:**
 ```bash
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### Permission Issues with Volumes
@@ -282,7 +282,7 @@ chmod -R 755 uploads/
 
 ### Port Already in Use
 
-**Change port in docker-compose.yml:**
+**Change port in docker compose.yml:**
 ```yaml
 ports:
   - "8001:8000"  # Host:Container
@@ -300,13 +300,13 @@ lsof -ti:8000 | xargs kill -9
 command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2
 ```
 
-**Or use CPU mode** by commenting out GPU deployment in docker-compose.yml.
+**Or use CPU mode** by commenting out GPU deployment in docker compose.yml.
 
 ## Performance Tuning
 
 ### CPU Mode (No GPU)
 
-Comment out the `deploy` section in `docker-compose.yml`:
+Comment out the `deploy` section in `docker compose.yml`:
 
 ```yaml
 # deploy:
@@ -369,7 +369,7 @@ docker system prune -a
 tar -czf uploads-backup-$(date +%Y%m%d).tar.gz uploads/
 
 # Backup entire app
-docker-compose down
+docker compose down
 tar -czf forcealignmentcutter-backup-$(date +%Y%m%d).tar.gz .
 ```
 
@@ -388,13 +388,13 @@ tar -czf forcealignmentcutter-backup-$(date +%Y%m%d).tar.gz .
 ### View Real-time Logs
 
 ```bash
-docker-compose logs -f --tail=100 fastapi
+docker compose logs -f --tail=100 fastapi
 ```
 
 ### Export Logs
 
 ```bash
-docker-compose logs > logs-$(date +%Y%m%d).txt
+docker compose logs > logs-$(date +%Y%m%d).txt
 ```
 
 ### Health Checks
@@ -404,7 +404,7 @@ docker-compose logs > logs-$(date +%Y%m%d).txt
 curl http://localhost:8000/health
 
 # Container health status
-docker-compose ps
+docker compose ps
 ```
 
 ### Resource Monitoring

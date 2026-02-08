@@ -6,12 +6,12 @@ set -e
 case "$1" in
   build)
     echo "Building Docker image..."
-    docker-compose build
+    docker compose build
     ;;
     
   up)
     echo "Starting services in development mode..."
-    docker-compose up -d
+    docker compose up -d
     echo "Services started!"
     echo "Web interface: http://localhost:8000/static/index.html"
     echo "API docs: http://localhost:8000/docs"
@@ -19,26 +19,26 @@ case "$1" in
     
   down)
     echo "Stopping services..."
-    docker-compose down
+    docker compose down
     ;;
     
   logs)
-    docker-compose logs -f fastapi
+    docker compose logs -f fastapi
     ;;
     
   restart)
     echo "Restarting services..."
-    docker-compose restart
+    docker compose restart
     ;;
     
   prod-build)
     echo "Building Docker image for production..."
-    docker-compose -f docker-compose.prod.yml build
+    docker compose -f docker-compose.prod.yml build
     ;;
     
   prod-up)
     echo "Starting services in production mode..."
-    docker-compose -f docker-compose.prod.yml up -d
+    docker compose -f docker-compose.prod.yml up -d
     echo "Services started!"
     echo "Web interface: http://localhost/"
     echo "API docs: http://localhost/docs"
@@ -46,26 +46,26 @@ case "$1" in
     
   prod-down)
     echo "Stopping production services..."
-    docker-compose -f docker-compose.prod.yml down
+    docker compose -f docker-compose.prod.yml down
     ;;
     
   prod-logs)
-    docker-compose -f docker-compose.prod.yml logs -f
+    docker compose -f docker-compose.prod.yml logs -f
     ;;
     
   shell)
     echo "Opening shell in FastAPI container..."
-    docker-compose exec fastapi /bin/bash
+    docker compose exec fastapi /bin/bash
     ;;
     
   clean)
     echo "Cleaning up Docker resources..."
-    docker-compose down -v
+    docker compose down -v
     docker system prune -f
     ;;
     
   status)
-    docker-compose ps
+    docker compose ps
     ;;
     
   *)
