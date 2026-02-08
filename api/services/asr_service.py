@@ -2,6 +2,7 @@
 import os
 import json
 import datetime
+import subprocess
 from typing import Callable, Optional, List, Dict
 from faster_whisper import WhisperModel
 from api.services.audio_service import AudioService
@@ -112,24 +113,64 @@ class ASRService:
         if progress_callback:
             progress_callback("Starting Montreal Forced Aligner...")
         
-        result = os.system(
-            f"mfa align --output_format json \
-                --use_threading \
-                --use_mp \
-                --overwrite \
-                --clean \
-                --final_clean \
-                {audio_file_dir}/chunks \
-                mandarin_china_mfa \
-                mandarin_mfa \
-                {audio_file_dir}/chunks"
-        )
+        # Build MFA command
+        cmd = [
+            "mfa", "align",
+            "--output_format", "json",
+            "--use_threading",
+            "--use_mp",
+            "--overwrite",
+            "--clean",
+            "--final_clean",
+            f"{audio_file_dir}/chunks",
+            "mandarin_china_mfa",
+            "mandarin_mfa",
+            f"{audio_file_dir}/chunks"
+        ]
         
-        if progress_callback:
-            if result == 0:
-                progress_callback("MFA alignment completed successfully")
-            else:
-                progress_callback(f"MFA alignment completed with code {result}")
+        try:
+            # Run MFA and capture output in real-time
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                bufsize=1
+            )
+            
+            # Stream output line by line
+            for line in process.stdout:
+                line = line.strip()
+                if line and progress_callback:
+                    # Filter out very verbose lines but keep important ones
+                    if any(keyword in line.lower() for keyword in [
+                        'processing', 'aligning', 'complete', 'error', 'warning',
+                        'done', 'finished', 'success', 'failed', 'analyzing',
+                        'generating', 'loading', 'file', 'chunk'
+                    ]):
+                        progress_callback(f"MFA: {line}")
+            
+            # Wait for process to complete
+            return_code = process.wait()
+            
+            if progress_callback:
+                if return_code == 0:
+                    progress_callback("✓ MFA alignment completed successfully")
+                else:
+                    progress_callback(f"⚠ MFA alignment completed with code {return_code}")
+            
+            return return_code
+            
+        except FileNotFoundError:
+            error_msg = "MFA not found. Please ensure Montreal Forced Aligner is installed."
+            if progress_callback:
+                progress_callback(f"❌ Error: {error_msg}")
+            raise RuntimeError(error_msg)
+        except Exception as e:
+            error_msg = f"MFA execution error: {str(e)}"
+            if progress_callback:
+                progress_callback(f"❌ Error: {error_msg}")
+            raise RuntimeError(error_msg)
     
     def process_audio_file(
         self,

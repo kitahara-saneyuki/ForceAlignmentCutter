@@ -2,6 +2,7 @@
 import os
 import json
 import datetime
+import subprocess
 from typing import Dict, Callable, Optional
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
@@ -24,12 +25,60 @@ class AudioService:
         if progress_callback:
             progress_callback("Converting MP4 to M4A...")
         
-        command = f"ffmpeg -i {audio_file}.mp4 -vn -acodec copy {audio_file}.m4a >/dev/null 2>&1"
-        os.system(f"rm {audio_file}.m4a >/dev/null 2>&1")
-        os.system(command)
+        input_file = f"{audio_file}.mp4"
+        output_file = f"{audio_file}.m4a"
         
-        if progress_callback:
-            progress_callback("Conversion completed")
+        # Remove existing output file
+        if os.path.exists(output_file):
+            os.remove(output_file)
+        
+        # Run ffmpeg with progress output
+        cmd = [
+            "ffmpeg", "-i", input_file,
+            "-vn", "-acodec", "copy",
+            "-y",  # Overwrite without asking
+            output_file
+        ]
+        
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True
+            )
+            
+            # Stream output
+            for line in process.stdout:
+                line = line.strip()
+                if line and progress_callback:
+                    # Filter for relevant ffmpeg output
+                    if any(keyword in line.lower() for keyword in [
+                        'duration', 'time=', 'size=', 'speed=', 'error', 'warning'
+                    ]):
+                        # Clean up the line
+                        if 'time=' in line.lower():
+                            progress_callback(f"Converting: {line.split('time=')[1].split()[0]}")
+                        elif 'duration' in line.lower():
+                            progress_callback(f"Input: {line}")
+            
+            return_code = process.wait()
+            
+            if return_code == 0 and progress_callback:
+                progress_callback("✓ Conversion completed")
+            elif progress_callback:
+                progress_callback(f"⚠ Conversion completed with code {return_code}")
+                
+        except FileNotFoundError:
+            error_msg = "ffmpeg not found. Please ensure ffmpeg is installed."
+            if progress_callback:
+                progress_callback(f"❌ Error: {error_msg}")
+            raise RuntimeError(error_msg)
+        except Exception as e:
+            error_msg = f"Conversion error: {str(e)}"
+            if progress_callback:
+                progress_callback(f"❌ Error: {error_msg}")
+            raise RuntimeError(error_msg)
 
     @staticmethod
     def m4a_to_wav(audio_file: str, output_file: str) -> None:

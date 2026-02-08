@@ -2,8 +2,9 @@
 import os
 import json
 import asyncio
+import uuid
 from typing import Dict
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Form
 from fastapi.responses import StreamingResponse, FileResponse
 from api.models.schemas import (
     AudioProcessRequest,
@@ -22,7 +23,9 @@ router = APIRouter(prefix="/api/audio", tags=["audio"])
 
 # Storage directory for uploaded files
 UPLOAD_DIR = "uploads"
+CHUNK_DIR = "uploads/chunks"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(CHUNK_DIR, exist_ok=True)
 
 
 @router.post("/upload", response_model=Dict)
@@ -43,6 +46,132 @@ async def upload_audio(file: UploadFile = File(...)):
         "size": len(content),
         "message": "File uploaded successfully"
     }
+
+
+@router.post("/upload-init", response_model=Dict)
+async def init_chunked_upload(
+    filename: str = Form(...),
+    total_size: int = Form(...),
+    total_chunks: int = Form(...)
+):
+    """Initialize chunked upload and return task_id for progress tracking."""
+    if not filename.endswith('.m4a'):
+        raise HTTPException(status_code=400, detail="Only M4A files are supported")
+    
+    # Create upload task
+    task_id = task_manager.create_task(f"upload_{filename}")
+    
+    # Create chunk directory for this upload
+    upload_chunk_dir = os.path.join(CHUNK_DIR, task_id)
+    os.makedirs(upload_chunk_dir, exist_ok=True)
+    
+    # Store metadata
+    metadata = {
+        "filename": filename,
+        "total_size": total_size,
+        "total_chunks": total_chunks,
+        "received_chunks": 0,
+        "received_chunk_indices": set(),  # Track which specific chunks received
+        "upload_chunk_dir": upload_chunk_dir
+    }
+    
+    # Store in task manager (we'll use this to track progress)
+    task_manager.tasks[task_id].metadata = metadata
+    
+    await task_manager.update_status(task_id, ProcessingStatus.PENDING)
+    await task_manager.add_progress(task_id, f"📤 Upload initialized: {filename} ({total_size / (1024*1024):.2f} MB, {total_chunks} chunks)")
+    
+    return {
+        "task_id": task_id,
+        "filename": filename,
+        "chunk_size": 5 * 1024 * 1024,  # 5MB
+        "message": "Chunked upload initialized"
+    }
+
+
+@router.post("/upload-chunk", response_model=Dict)
+async def upload_chunk(
+    task_id: str = Form(...),
+    chunk_index: int = Form(...),
+    chunk: UploadFile = File(...)
+):
+    """Upload a single chunk (idempotent - handles retries)."""
+    if task_id not in task_manager.tasks:
+        raise HTTPException(status_code=404, detail="Upload task not found")
+    
+    task = task_manager.tasks[task_id]
+    metadata = task.metadata
+    
+    # Check if this is a retry (chunk already received)
+    is_retry = chunk_index in metadata["received_chunk_indices"]
+    
+    # Save chunk (overwrite if retry)
+    chunk_path = os.path.join(metadata["upload_chunk_dir"], f"chunk_{chunk_index:04d}")
+    with open(chunk_path, "wb") as buffer:
+        content = await chunk.read()
+        buffer.write(content)
+    
+    # Update progress only if this is a new chunk
+    if not is_retry:
+        metadata["received_chunk_indices"].add(chunk_index)
+        metadata["received_chunks"] = len(metadata["received_chunk_indices"])
+    
+    received = metadata["received_chunks"]
+    total = metadata["total_chunks"]
+    progress_pct = (received / total) * 100
+    
+    # Log message
+    if is_retry:
+        await task_manager.add_progress(
+            task_id,
+            f"🔄 Chunk {chunk_index + 1} re-uploaded ({received}/{total} total, {progress_pct:.1f}%)"
+        )
+    else:
+        await task_manager.add_progress(
+            task_id,
+            f"📦 Chunk {received}/{total} received ({progress_pct:.1f}%)"
+        )
+    
+    # If all chunks received, merge them
+    if received == total:
+        await task_manager.add_progress(task_id, "🔄 Merging chunks...")
+        
+        final_path = os.path.join(UPLOAD_DIR, metadata["filename"])
+        
+        # Merge chunks in order
+        with open(final_path, "wb") as outfile:
+            for i in range(total):
+                chunk_path = os.path.join(metadata["upload_chunk_dir"], f"chunk_{i:04d}")
+                with open(chunk_path, "rb") as infile:
+                    outfile.write(infile.read())
+        
+        # Clean up chunks
+        import shutil
+        shutil.rmtree(metadata["upload_chunk_dir"])
+        
+        file_size = os.path.getsize(final_path)
+        await task_manager.set_result(task_id, {
+            "filename": metadata["filename"],
+            "path": final_path,
+            "size": file_size,
+            "message": "Upload completed successfully"
+        })
+        await task_manager.add_progress(task_id, f"✅ Upload complete: {file_size / (1024*1024):.2f} MB")
+        
+        return {
+            "status": "completed",
+            "filename": metadata["filename"],
+            "size": file_size,
+            "message": "All chunks received and merged"
+        }
+    
+    return {
+        "status": "in_progress",
+        "received_chunks": received,
+        "total_chunks": total,
+        "progress": progress_pct
+    }
+
 
 
 async def process_audio_background(

@@ -18,6 +18,7 @@ class Task:
         self.updated_at = datetime.now()
         self.result: Optional[Dict] = None
         self.error: Optional[str] = None
+        self.metadata: Dict = {}  # For storing arbitrary task metadata
     
     def add_message(self, message: str, level: str = "info"):
         """Add a progress message."""

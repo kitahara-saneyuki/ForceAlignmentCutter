@@ -23,3 +23,7 @@
 ## Frontend Implementation
 
 1.  [ ] Create a simple web interface using Flutter that allows users to upload audio files, view the ASR output JSON file, and manually edit it.
+
+## Future Improvements
+
+1.  [ ] 

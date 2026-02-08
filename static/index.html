@@ -80,8 +80,49 @@
             border-color: #667eea;
         }
         
+        .upload-area.uploading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
         input[type="file"] {
             display: none;
+        }
+        
+        .upload-progress-container {
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 24px;
+            background: #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            min-width: 30px;
+        }
+        
+        .upload-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: #666;
         }
         
         button {
@@ -253,8 +294,17 @@
             <div class="section">
                 <h2 class="section-title">1. Upload Audio File</h2>
                 <div class="upload-area" id="uploadArea">
-                    <p>📁 Click or drag & drop an M4A file here</p>
+                    <p id="uploadText">📁 Click or drag & drop an M4A file here</p>
                     <input type="file" id="fileInput" accept=".m4a">
+                </div>
+                <div class="upload-progress-container" id="uploadProgressContainer">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar" id="uploadProgressBar">0%</div>
+                    </div>
+                    <div class="upload-info">
+                        <span id="uploadStatus">Uploading...</span>
+                        <span id="uploadSpeed"></span>
+                    </div>
                 </div>
                 <p id="fileName" style="margin-top: 1rem; color: #666;"></p>
             </div>
@@ -361,21 +411,166 @@
         });
         
         async function uploadFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
+            const uploadArea = document.getElementById('uploadArea');
+            const uploadProgressContainer = document.getElementById('uploadProgressContainer');
+            const uploadProgressBar = document.getElementById('uploadProgressBar');
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadSpeed = document.getElementById('uploadSpeed');
+            const uploadText = document.getElementById('uploadText');
+            const fileName = document.getElementById('fileName');
+            
+            // Show progress bar and disable upload area
+            uploadArea.classList.add('uploading');
+            uploadProgressContainer.style.display = 'block';
+            uploadText.textContent = '⏳ Initializing upload...';
+            fileName.textContent = '';
+            
+            // Chunk size: 5MB
+            const CHUNK_SIZE = 5 * 1024 * 1024;
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             
             try {
-                const response = await fetch(`${API_BASE}/audio/upload`, {
+                // Step 1: Initialize chunked upload
+                const initFormData = new FormData();
+                initFormData.append('filename', file.name);
+                initFormData.append('total_size', file.size);
+                initFormData.append('total_chunks', totalChunks);
+                
+                const initResponse = await fetch(`${API_BASE}/audio/upload-init`, {
                     method: 'POST',
-                    body: formData
+                    body: initFormData
                 });
                 
-                const result = await response.json();
-                currentFile = result.filename;
-                fileName.textContent = `✓ Uploaded: ${currentFile}`;
-                processBtn.disabled = false;
+                if (!initResponse.ok) {
+                    throw new Error('Failed to initialize upload');
+                }
+                
+                const initResult = await initResponse.json();
+                const uploadTaskId = initResult.task_id;
+                
+                uploadText.textContent = `📤 Uploading ${totalChunks} chunks...`;
+                
+                // Step 2: Connect to SSE for server-side progress
+                const eventSource = new EventSource(`${API_BASE}/sse/stream/${uploadTaskId}`);
+                
+                eventSource.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'progress') {
+                            uploadStatus.textContent = data.message;
+                        } else if (data.type === 'status') {
+                            if (data.status === 'completed') {
+                                eventSource.close();
+                            }
+                        }
+                    } catch (e) {
+                        console.error('SSE parse error:', e);
+                    }
+                };
+                
+                eventSource.onerror = () => {
+                    console.log('SSE connection closed');
+                    eventSource.close();
+                };
+                
+                // Helper function to upload a single chunk with retry logic
+                const uploadChunkWithRetry = async (chunkIndex, chunk, maxRetries = 3) => {
+                    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                        try {
+                            const chunkFormData = new FormData();
+                            chunkFormData.append('task_id', uploadTaskId);
+                            chunkFormData.append('chunk_index', chunkIndex);
+                            chunkFormData.append('chunk', chunk, `chunk_${chunkIndex}`);
+                            
+                            const chunkResponse = await fetch(`${API_BASE}/audio/upload-chunk`, {
+                                method: 'POST',
+                                body: chunkFormData
+                            });
+                            
+                            if (!chunkResponse.ok) {
+                                throw new Error(`HTTP ${chunkResponse.status}`);
+                            }
+                            
+                            // Success - return the response
+                            return await chunkResponse.json();
+                            
+                        } catch (error) {
+                            const isLastAttempt = attempt === maxRetries;
+                            
+                            if (isLastAttempt) {
+                                throw new Error(`Chunk ${chunkIndex} failed after ${maxRetries + 1} attempts: ${error.message}`);
+                            }
+                            
+                            // Exponential backoff: 1s, 2s, 4s
+                            const delay = Math.pow(2, attempt) * 1000;
+                            uploadStatus.textContent = `⚠️ Chunk ${chunkIndex + 1} failed, retrying in ${delay/1000}s... (attempt ${attempt + 1}/${maxRetries})`;
+                            
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    }
+                };
+                
+                // Step 3: Upload chunks sequentially with retry logic
+                let uploadedChunks = 0;
+                const startTime = Date.now();
+                
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const chunk = file.slice(start, end);
+                    
+                    // Upload with automatic retry
+                    await uploadChunkWithRetry(i, chunk);
+                    
+                    uploadedChunks++;
+                    const progress = (uploadedChunks / totalChunks) * 100;
+                    
+                    // Update local progress bar
+                    uploadProgressBar.style.width = progress + '%';
+                    uploadProgressBar.textContent = Math.round(progress) + '%';
+                    
+                    // Calculate upload speed
+                    const elapsedTime = (Date.now() - startTime) / 1000;
+                    const uploadedBytes = uploadedChunks * CHUNK_SIZE;
+                    const speed = uploadedBytes / elapsedTime;
+                    
+                    let speedText;
+                    if (speed > 1024 * 1024) {
+                        speedText = (speed / (1024 * 1024)).toFixed(2) + ' MB/s';
+                    } else if (speed > 1024) {
+                        speedText = (speed / 1024).toFixed(2) + ' KB/s';
+                    } else {
+                        speedText = speed.toFixed(0) + ' B/s';
+                    }
+                    
+                    uploadSpeed.textContent = speedText;
+                }
+                
+                // Upload complete
+                currentFile = file.name;
+                uploadProgressBar.style.width = '100%';
+                uploadProgressBar.textContent = '100%';
+                uploadStatus.textContent = '✅ Upload complete!';
+                
+                setTimeout(() => {
+                    uploadProgressContainer.style.display = 'none';
+                    uploadArea.classList.remove('uploading');
+                    uploadText.textContent = '📁 Click or drag & drop an M4A file here';
+                    fileName.textContent = `✓ Uploaded: ${currentFile}`;
+                    processBtn.disabled = false;
+                    eventSource.close();
+                    
+                    // Auto-trigger processing
+                    processBtn.click();
+                }, 1500);
+                
             } catch (error) {
+                uploadProgressContainer.style.display = 'none';
+                uploadArea.classList.remove('uploading');
+                uploadText.textContent = '📁 Click or drag & drop an M4A file here';
                 alert('Upload failed: ' + error.message);
+                throw error;
             }
         }
         
