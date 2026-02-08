@@ -118,9 +118,6 @@ class AudioService:
         for i, chunk in enumerate(audio_chunks):
             out_file = f"{audio_file_dir}/chunks/{audio_file_name}_chunk{i}.wav"
             chunk.export(out_file, format="wav")
-            if progress_callback:
-                progress_callback(f"Exported chunk {i+1}/{len(audio_chunks)}")
-        
         if progress_callback:
             progress_callback(f"Created {len(audio_chunks)} chunks")
         
