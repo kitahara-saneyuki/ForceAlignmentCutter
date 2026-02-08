@@ -13,7 +13,7 @@
     }
 }
 ```
-1.  [ ] Implement a function to compare two of the above-formatted JSON files: one from the ASR and MFA output, another one is manually edited with unused characters removed. The goal of this function is to remove the unused characters in the audio file and generate a new audio file that is aligned with the manually edited JSON file.
+1.  [x] Implement a function to compare two of the above-formatted JSON files: one from the ASR and MFA output, another one is manually edited with unused characters removed. The goal of this function is to remove the unused characters in the audio file and generate a new audio file that is aligned with the manually edited JSON file.
 1.  [ ] Refactor the backend from Jupyter Notebook to Python FastAPI project. Using to create a web interface for users to upload audio files and manually edit the ASR output JSON file, and then download the aligned audio file. 
     1.  [ ] The web interface should also support Server-Sent Events (SSE) to show the progress of the different processes in real-time.
     1.  [ ] Using RabbitMQ / Celery to make the backend processes asynchronous and scalable, allowing for multiple users to upload and process their audio files simultaneously without blocking the server.
