@@ -1,17 +1,18 @@
 # ForceAlignmentCutter
 
-A Python-based audio processing pipeline for Chinese (Mandarin) speech transcription and forced alignment. This tool converts video files to audio, segments them based on silence, transcribes using Whisper ASR, and performs forced alignment using Montreal Forced Aligner (MFA).
+A Python-based audio processing pipeline for Chinese (Mandarin) speech transcription, forced alignment, and audio editing. This tool converts video files to audio, segments them based on silence, transcribes using Whisper ASR, performs forced alignment using Montreal Forced Aligner (MFA), and enables manual editing of transcriptions to generate precisely aligned audio files.
 
-## Features
+## Audio Processing Pipeline
 
-- **Video to Audio Conversion**: Convert MP4 videos to WAV audio format using FFmpeg
-- **Smart Audio Segmentation**: Split audio files into chunks based on silence detection
-- **Whisper ASR Transcription**: High-quality Chinese speech recognition using Faster-Whisper
-- **Forced Alignment**: Precise word-level time alignment using Montreal Forced Aligner
-- **Multiple Output Formats**: Generate SRT subtitles, JSON, or plain text transcriptions
-- **GPU Acceleration**: CUDA support for faster transcription processing
+1.  Preprocessing:
+    1.  Smart Silence Removal
+    1.  Whisper ASR Transcription: High-quality Chinese speech recognition using Faster-Whisper
+    1.  Forced Alignment: Precise word-level time alignment using Montreal Forced Aligner
+2.  Manual Editing:
+    1.  Edit transcriptions and generate aligned audio with unwanted segments removed
+3.  Generate SRT subtitles
 
-## Prerequisites
+## Environment
 
 - **Operating System**: Linux (Debian-based) or macOS
 - **Hardware**: NVIDIA GPU (recommended for CUDA acceleration)
@@ -20,45 +21,13 @@ A Python-based audio processing pipeline for Chinese (Mandarin) speech transcrip
   - FFmpeg
   - CUDA Toolkit (for GPU acceleration)
 
-## Installation
+## Installation for Debian/Ubuntu:**
 
-### 1. Install Miniconda (if not already installed)
-
-**For Debian/Ubuntu:**
 ```bash
-make miniconda_debian
+make miniconda
 source ~/.bashrc
-```
-
-**For macOS:**
-```bash
-make miniconda_mac
-source ~/.zprofile
-```
-
-### 2. Install System Dependencies
-
-**For Debian/Ubuntu:**
-```bash
-make init_debian
-```
-
-**For macOS:**
-```bash
-make init_mac
-```
-
-### 3. Install CUDA Toolkit (Optional, for GPU acceleration)
-
-```bash
+make init
 make cuda
-```
-
-### 4. Create Conda Environment
-
-This will install all Python dependencies and download required MFA models:
-
-```bash
 make conda_create
 ```
 
@@ -70,7 +39,7 @@ The environment includes:
 - Audio processing libraries (pydub, sox, libsndfile)
 - And other dependencies listed in `environment.yml`
 
-### 5. Update Environment (when needed)
+### Update Environment (when needed)
 
 ```bash
 make conda_update
@@ -78,7 +47,9 @@ make conda_update
 
 ## Usage
 
-### Basic Workflow
+### Complete Workflow
+
+The pipeline follows these steps:
 
 1. **Open the Jupyter Notebook:**
    ```bash
@@ -91,34 +62,116 @@ make conda_update
    Edit the configuration cell in the notebook:
    ```python
    ASR_MODEL = "deepdml/faster-whisper-large-v3-turbo-ct2"
-   MIN_SILENCE_LEN = 500  # Minimum silence length in ms
-   SILENCE_THRESH = -60   # Silence threshold in dBFS
+   MIN_SILENCE_LEN = 800        # Minimum silence length in ms for chunking
+   MANUAL_SILENCE_LEN = 300     # Silence interval between combined chunks in ms
+   SILENCE_THRESH = -60         # Silence threshold in dBFS
    ```
 
 3. **Process Your Audio/Video:**
    
-   Update the audio file path in the notebook:
+   Run the main workflow in the notebook:
    ```python
    audio_file = "../youtube/guardiola/your-video-file"
-   mp42wav(audio_file)
-   chunks = cut_blanks(audio_file, MIN_SILENCE_LEN, SILENCE_THRESH)
    audio_file_dir, audio_file_name = audio_paths(audio_file)
    
+   # Step 1: Convert video to audio
+   mp42m4a(audio_file)
+   
+   # Step 2: Split audio into chunks based on silence
+   chunks = cut_blanks(audio_file, MIN_SILENCE_LEN, SILENCE_THRESH)
+   
+   # Step 3: Transcribe each chunk
    for i in range(chunks):
        chunk_audio_file = f"{audio_file_dir}/chunks/{audio_file_name}_chunk{i}"
        transcribe_audio(chunk_audio_file, subtitle_format="txt")
    
+   # Step 4: Perform forced alignment on all chunks
    mfa(audio_file_dir)
+   
+   # Step 5: Concatenate chunks with word-level timestamps
+   concatenate_audio_and_adjust_timestamps(audio_file, chunks)
+   ```
+
+4. **Manual Editing (Optional):**
+   
+   After the pipeline generates `{filename}_combined.json`, you can manually edit it to remove unwanted segments:
+   - Open `{filename}_combined.json` in a text editor
+   - Remove entries for words/segments you want to exclude from the final audio
+   - Save the edited version as `{filename}_edited.json`
+   
+5. **Generate Aligned Audio:**
+   
+   Create the final audio file with unwanted segments removed:
+   ```python
+   align_audio_with_edited_json(
+       f"{audio_file_dir}/{audio_file_name}_combined.json",
+       f"{audio_file_dir}/{audio_file_name}_edited.json",
+       f"{audio_file_dir}/{audio_file_name}_combined.m4a",
+       f"{audio_file_dir}/{audio_file_name}_edited.m4a",
+   )
    ```
 
 ### Output Files
 
-The pipeline generates:
-- `.wav` - Converted audio file
-- `.srt` - SubRip subtitle file with timestamps
-- `.json` - JSON format with structured subtitle data
-- `.txt` - Plain text transcription
-- `chunks/` - Directory containing segmented audio chunks and alignment results
+The pipeline generates multiple files at different stages:
+
+**Initial Processing:**
+- `{filename}.m4a` - Converted audio file from video
+- `chunks/{filename}_chunk{i}.wav` - Segmented audio chunks
+- `chunks/{filename}_chunk{i}.txt` - Transcription for each chunk
+- `chunks/{filename}_chunk{i}.json` - MFA alignment data for each chunk
+
+**Combined Output:**
+- `{filename}_combined.m4a` - Concatenated audio with silence intervals
+- `{filename}_combined.json` - Word-level timestamps for all chunks in format:
+  ```json
+  {
+    "0": {
+      "word": "word_text",
+      "start_time": 0.0,
+      "end_time": 1.0
+    },
+    ...
+  }
+  ```
+
+**Manual Editing:**
+- `{filename}_edited.json` - Manually edited JSON (created by user)
+- `{filename}_edited.m4a` - Final aligned audio with unwanted segments removed
+
+### Manual Editing Workflow
+
+The manual editing feature allows you to remove unwanted segments from your audio by editing the JSON file:
+
+1. **Review the Combined JSON**: Open `{filename}_combined.json` to see all transcribed words with their timestamps
+
+2. **Edit the JSON**: Create a copy as `{filename}_edited.json` and remove entries for:
+   - Filler words (um, uh, etc.)
+   - Mistakes or repeated phrases
+   - Unwanted content or pauses
+   - Any segments you want to exclude from the final audio
+
+3. **Example Editing**:
+   ```json
+   // Original combined.json
+   {
+     "0": {"word": "今天", "start_time": 0.0, "end_time": 0.5},
+     "1": {"word": "呃", "start_time": 0.5, "end_time": 0.8},  // Remove this
+     "2": {"word": "天气", "start_time": 0.8, "end_time": 1.2},
+     "3": {"word": "很好", "start_time": 1.2, "end_time": 1.7}
+   }
+   
+   // Edited version (removed entry "1")
+   {
+     "0": {"word": "今天", "start_time": 0.0, "end_time": 0.5},
+     "2": {"word": "天气", "start_time": 0.8, "end_time": 1.2},
+     "3": {"word": "很好", "start_time": 1.2, "end_time": 1.7}
+   }
+   ```
+
+4. **Generate Aligned Audio**: Run `align_audio_with_edited_json()` to create the final audio file with the unwanted segments removed
+
+**Note**: The sequence numbers don't need to be renumbered - just remove the entries you don't want and keep the original sequence IDs for the remaining entries.
 
 ## Project Structure
 
@@ -132,22 +185,32 @@ ForceAlignmentCutter/
 ├── youtube/
 │   └── guardiola/          # Example video processing directory
 │       ├── *.mp4           # Input video files
-│       ├── *.srt           # Generated subtitle files
-│       └── chunks/         # Audio chunks and alignment results
+│       ├── *.m4a           # Converted audio files
+│       ├── *_combined.m4a  # Concatenated audio output
+│       ├── *_combined.json # Word-level timestamps
+│       ├── *_edited.json   # Manually edited timestamps (user-created)
+│       ├── *_edited.m4a    # Final aligned audio output
+│       └── chunks/         # Audio chunks and MFA alignment results
+│           ├── *_chunk0.wav
+│           ├── *_chunk0.txt
+│           ├── *_chunk0.json
+│           └── ...
 ├── environment.yml         # Conda environment specification
 ├── Makefile               # Build and setup commands
+├── plan.md                # Development roadmap
 └── README.md              # This file
 ```
 
 ## Key Functions
 
-### `mp42wav(audio_file)`
-Converts MP4 video to WAV audio format.
+### `mp42m4a(audio_file)`
+Converts MP4 video to M4A audio format using FFmpeg.
 
 ### `cut_blanks(audio_file, min_silence_len, silence_thresh)`
 Splits audio into chunks based on silence detection.
 - `min_silence_len`: Minimum silence duration in milliseconds
 - `silence_thresh`: Silence threshold in dBFS
+- Returns: Number of chunks created
 
 ### `transcribe_audio(audio_file, subtitle_format)`
 Transcribes audio using Whisper ASR model.
@@ -156,7 +219,19 @@ Transcribes audio using Whisper ASR model.
 - Optimized for Mandarin Chinese
 
 ### `mfa(audio_file_dir)`
-Performs forced alignment using Montreal Forced Aligner with Mandarin models.
+Performs forced alignment using Montreal Forced Aligner with Mandarin models on all chunks in the directory.
+
+### `concatenate_audio_and_adjust_timestamps(audio_file, chunks)`
+Concatenates audio chunks with silence intervals and combines word-level timestamps.
+- Adds `MANUAL_SILENCE_LEN` milliseconds of silence between chunks
+- Adjusts timestamps to account for cumulative time
+- Generates `{filename}_combined.m4a` and `{filename}_combined.json`
+
+### `align_audio_with_edited_json(original_json, edited_json, original_audio, output_audio)`
+Compares original and manually edited JSON files to generate aligned audio.
+- Removes audio segments not present in the edited JSON
+- Preserves timing of kept segments
+- Useful for removing filler words, mistakes, or unwanted content
 
 ## Configuration
 
@@ -169,8 +244,29 @@ You can change the ASR model in the notebook:
 ### Silence Detection Parameters
 
 Adjust for different audio conditions:
-- **MIN_SILENCE_LEN**: Increase for longer pauses, decrease for continuous speech
-- **SILENCE_THRESH**: Lower values (e.g., -70) for noisy audio, higher (e.g., -50) for clean audio
+- **MIN_SILENCE_LEN** (default: 800ms): Controls how audio is chunked. Increase for longer pauses, decrease for continuous speech
+- **MANUAL_SILENCE_LEN** (default: 300ms): Silence interval inserted between concatenated chunks
+- **SILENCE_THRESH** (default: -60 dBFS): Lower values (e.g., -70) for noisy audio, higher (e.g., -50) for clean audio
+
+## Current Status & Roadmap
+
+### Completed Features ✓
+
+The following backend features have been successfully implemented:
+
+1. **ASR & Forced Alignment**: Using `faster-whisper` for transcription and Montreal Forced Aligner (MFA) to generate word-level timestamps
+2. **Audio Concatenation**: Concatenate audio chunks with silence intervals and combine word-level timestamps into a single JSON file
+3. **Manual Editing & Audio Alignment**: Compare original and manually edited JSON files to generate aligned audio with unwanted segments removed
+
+### Planned Features
+
+1. **Web Interface**: Refactor from Jupyter Notebook to FastAPI with web UI
+   - Real-time progress updates using Server-Sent Events (SSE)
+   - Upload audio files and edit transcriptions in browser
+   - Download aligned audio files
+2. **Scalable Backend**: RabbitMQ/Celery for asynchronous processing
+3. **Flutter Frontend**: Cross-platform web interface for audio editing
+4. **Deployment**: Production server deployment
 
 ## Troubleshooting
 
