@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ForceAlignmentCutter Web Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+        
+        .content {
+            padding: 2rem;
+        }
+        
+        .section {
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+        
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+        
+        .upload-area.dragging {
+            background: #e7f3ff;
+            border-color: #667eea;
+        }
+        
+        .upload-area.uploading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .upload-progress-container {
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 24px;
+            background: #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            min-width: 30px;
+        }
+        
+        .upload-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .config-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="number"],
+        select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .progress-container {
+            display: none;
+            margin-top: 1rem;
+        }
+        
+        .progress-log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .log-entry {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-timestamp {
+            color: #6c757d;
+            margin-right: 0.5rem;
+        }
+        
+        .log-info {
+            color: #0066cc;
+        }
+        
+        .log-error {
+            color: #dc3545;
+        }
+        
+        .log-success {
+            color: #28a745;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .status-pending {
+            background: #ffc107;
+            color: #000;
+        }
+        
+        .status-processing {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .status-completed {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-failed {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .editor-container {
+            display: none;
+        }
+        
+        .json-editor {
+            width: 100%;
+            height: 400px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .download-section {
+            display: none;
+            background: #e7f3ff;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        
+        .download-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .download-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 ForceAlignmentCutter</h1>
+            <p class="subtitle">Audio Processing Pipeline with Real-time Progress</p>
+        </header>
+        
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="section">
+                <h2 class="section-title">1. Upload Audio File</h2>
+                <div class="upload-area" id="uploadArea">
+                    <p id="uploadText">📁 Click or drag & drop an M4A file here</p>
+                    <input type="file" id="fileInput" accept=".m4a">
+                </div>
+                <div class="upload-progress-container" id="uploadProgressContainer">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar" id="uploadProgressBar">0%</div>
+                    </div>
+                    <div class="upload-info">
+                        <span id="uploadStatus">Uploading...</span>
+                        <span id="uploadSpeed"></span>
+                    </div>
+                </div>
+                <p id="fileName" style="margin-top: 1rem; color: #666;"></p>
+            </div>
+            
+            <!-- Configuration Section -->
+            <div class="section">
+                <h2 class="section-title">2. Configure Processing</h2>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label for="minSilence">Min Silence Length (ms)</label>
+                        <input type="number" id="minSilence" value="800" min="100" step="100">
+                    </div>
+                    <div class="config-item">
+                        <label for="manualSilence">Manual Silence (ms)</label>
+                        <input type="number" id="manualSilence" value="300" min="100" step="100">
+                    </div>
+                    <div class="config-item">
+                        <label for="silenceThresh">Silence Threshold (dBFS)</label>
+                        <input type="number" id="silenceThresh" value="-60" max="-30" step="5">
+                    </div>
+                    <div class="config-item">
+                        <label for="asrModel">ASR Model</label>
+                        <select id="asrModel">
+                            <option value="deepdml/faster-whisper-large-v3-turbo-ct2">Faster Whisper Turbo</option>
+                            <option value="XA9/Belle-faster-whisper-large-v3-zh-punct">Belle with Punctuation</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="processBtn" disabled>Start Processing</button>
+            </div>
+            
+            <!-- Progress Section -->
+            <div class="section progress-container" id="progressSection">
+                <h2 class="section-title">3. Processing Progress</h2>
+                <div>
+                    <span>Status: </span>
+                    <span class="status-badge" id="statusBadge">Pending</span>
+                </div>
+                <div class="progress-log" id="progressLog"></div>
+            </div>
+            
+            <!-- Editor Section -->
+            <div class="section editor-container" id="editorSection">
+                <h2 class="section-title">4. Edit Transcription</h2>
+                <p style="color: #666; margin-bottom: 1rem;">
+                    Remove unwanted entries from the JSON below and click "Generate Aligned Audio"
+                </p>
+                <textarea class="json-editor" id="jsonEditor"></textarea>
+                <div class="button-group">
+                    <button id="alignBtn">Generate Aligned Audio</button>
+                    <button id="downloadJsonBtn">Download JSON</button>
+                </div>
+            </div>
+            
+            <!-- Download Section -->
+            <div class="download-section" id="downloadSection">
+                <h3>✅ Processing Complete!</h3>
+                <p style="margin-top: 0.5rem;">
+                    <a href="#" id="downloadLink" class="download-link">Download Aligned Audio</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let currentFile = null;
+        let currentTaskId = null;
+        let eventSource = null;
+        
+        // Upload handlers
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const processBtn = document.getElementById('processBtn');
+        
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragging');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragging');
+        });
+        
+        uploadArea.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragging');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.m4a')) {
+                await uploadFile(file);
+            } else {
+                alert('Please upload an M4A file');
+            }
+        });
+        
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                await uploadFile(file);
+            }
+        });
+        
+        async function uploadFile(file) {
+            const uploadArea = document.getElementById('uploadArea');
+            const uploadProgressContainer = document.getElementById('uploadProgressContainer');
+            const uploadProgressBar = document.getElementById('uploadProgressBar');
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadSpeed = document.getElementById('uploadSpeed');
+            const uploadText = document.getElementById('uploadText');
+            const fileName = document.getElementById('fileName');
+            
+            // Show progress bar and disable upload area
+            uploadArea.classList.add('uploading');
+            uploadProgressContainer.style.display = 'block';
+            uploadText.textContent = '⏳ Initializing upload...';
+            fileName.textContent = '';
+            
+            // Chunk size: 500KB
+            const CHUNK_SIZE = 500 * 1024;
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            
+            try {
+                // Step 1: Initialize chunked upload
+                const initFormData = new FormData();
+                initFormData.append('filename', file.name);
+                initFormData.append('total_size', file.size);
+                initFormData.append('total_chunks', totalChunks);
+                
+                const initResponse = await fetch(`${API_BASE}/audio/upload-init`, {
+                    method: 'POST',
+                    body: initFormData
+                });
+                
+                if (!initResponse.ok) {
+                    throw new Error('Failed to initialize upload');
+                }
+                
+                const initResult = await initResponse.json();
+                const uploadTaskId = initResult.task_id;
+                
+                uploadText.textContent = `📤 Uploading ${totalChunks} chunks...`;
+                
+                // Step 2: Connect to SSE for server-side progress
+                const eventSource = new EventSource(`${API_BASE}/sse/stream/${uploadTaskId}`);
+                
+                eventSource.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'progress') {
+                            uploadStatus.textContent = data.message;
+                        } else if (data.type === 'status') {
+                            if (data.status === 'completed') {
+                                eventSource.close();
+                            }
+                        }
+                    } catch (e) {
+                        console.error('SSE parse error:', e);
+                    }
+                };
+                
+                eventSource.onerror = () => {
+                    console.log('SSE connection closed');
+                    eventSource.close();
+                };
+                
+                // Helper function to upload a single chunk with retry logic
+                const uploadChunkWithRetry = async (chunkIndex, chunk, maxRetries = 3) => {
+                    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                        try {
+                            const chunkFormData = new FormData();
+                            chunkFormData.append('task_id', uploadTaskId);
+                            chunkFormData.append('chunk_index', chunkIndex);
+                            chunkFormData.append('chunk', chunk, `chunk_${chunkIndex}`);
+                            
+                            const chunkResponse = await fetch(`${API_BASE}/audio/upload-chunk`, {
+                                method: 'POST',
+                                body: chunkFormData
+                            });
+                            
+                            if (!chunkResponse.ok) {
+                                throw new Error(`HTTP ${chunkResponse.status}`);
+                            }
+                            
+                            // Success - return the response
+                            return await chunkResponse.json();
+                            
+                        } catch (error) {
+                            const isLastAttempt = attempt === maxRetries;
+                            
+                            if (isLastAttempt) {
+                                throw new Error(`Chunk ${chunkIndex} failed after ${maxRetries + 1} attempts: ${error.message}`);
+                            }
+                            
+                            // Exponential backoff: 1s, 2s, 4s
+                            const delay = Math.pow(2, attempt) * 1000;
+                            uploadStatus.textContent = `⚠️ Chunk ${chunkIndex + 1} failed, retrying in ${delay/1000}s... (attempt ${attempt + 1}/${maxRetries})`;
+                            
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    }
+                };
+                
+                // Step 3: Upload chunks sequentially with retry logic
+                let uploadedChunks = 0;
+                const startTime = Date.now();
+                
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const chunk = file.slice(start, end);
+                    
+                    // Upload with automatic retry
+                    await uploadChunkWithRetry(i, chunk);
+                    
+                    uploadedChunks++;
+                    const progress = (uploadedChunks / totalChunks) * 100;
+                    
+                    // Update local progress bar
+                    uploadProgressBar.style.width = progress + '%';
+                    uploadProgressBar.textContent = Math.round(progress) + '%';
+                    
+                    // Calculate upload speed
+                    const elapsedTime = (Date.now() - startTime) / 1000;
+                    const uploadedBytes = uploadedChunks * CHUNK_SIZE;
+                    const speed = uploadedBytes / elapsedTime;
+                    
+                    let speedText;
+                    if (speed > 1024 * 1024) {
+                        speedText = (speed / (1024 * 1024)).toFixed(2) + ' MB/s';
+                    } else if (speed > 1024) {
+                        speedText = (speed / 1024).toFixed(2) + ' KB/s';
+                    } else {
+                        speedText = speed.toFixed(0) + ' B/s';
+                    }
+                    
+                    uploadSpeed.textContent = speedText;
+                }
+                
+                // Upload complete
+                currentFile = file.name;
+                uploadProgressBar.style.width = '100%';
+                uploadProgressBar.textContent = '100%';
+                uploadStatus.textContent = '✅ Upload complete!';
+                
+                setTimeout(() => {
+                    uploadProgressContainer.style.display = 'none';
+                    uploadArea.classList.remove('uploading');
+                    uploadText.textContent = '📁 Click or drag & drop an M4A file here';
+                    fileName.textContent = `✓ Uploaded: ${currentFile}`;
+                    processBtn.disabled = false;
+                    eventSource.close();
+                    
+                    // Auto-trigger processing
+                    processBtn.click();
+                }, 1500);
+                
+            } catch (error) {
+                uploadProgressContainer.style.display = 'none';
+                uploadArea.classList.remove('uploading');
+                uploadText.textContent = '📁 Click or drag & drop an M4A file here';
+                alert('Upload failed: ' + error.message);
+                throw error;
+            }
+        }
+        
+        // Process audio
+        processBtn.addEventListener('click', async () => {
+            const config = {
+                filename: currentFile,
+                min_silence_len: parseInt(document.getElementById('minSilence').value),
+                manual_silence_len: parseInt(document.getElementById('manualSilence').value),
+                silence_thresh: parseInt(document.getElementById('silenceThresh').value),
+                asr_model: document.getElementById('asrModel').value
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/audio/process`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const result = await response.json();
+                currentTaskId = result.task_id;
+                
+                // Show progress section
+                document.getElementById('progressSection').style.display = 'block';
+                processBtn.disabled = true;
+                
+                // Connect to SSE
+                connectSSE(currentTaskId);
+            } catch (error) {
+                alert('Processing failed: ' + error.message);
+            }
+        });
+        
+        function connectSSE(taskId) {
+            eventSource = new EventSource(`${API_BASE}/sse/stream/${taskId}`);
+            const progressLog = document.getElementById('progressLog');
+            const statusBadge = document.getElementById('statusBadge');
+            
+            eventSource.addEventListener('progress', (e) => {
+                const data = JSON.parse(e.data);
+                addLogEntry(data.message, 'info');
+            });
+            
+            eventSource.addEventListener('status', (e) => {
+                const data = JSON.parse(e.data);
+                statusBadge.textContent = data.status;
+                statusBadge.className = `status-badge status-${data.status}`;
+            });
+            
+            eventSource.addEventListener('complete', (e) => {
+                const data = JSON.parse(e.data);
+                addLogEntry('Processing completed!', 'success');
+                statusBadge.textContent = 'Completed';
+                statusBadge.className = 'status-badge status-completed';
+                eventSource.close();
+                
+                // Load transcription
+                loadTranscription();
+            });
+            
+            eventSource.addEventListener('error', (e) => {
+                const data = JSON.parse(e.data);
+                addLogEntry('Error: ' + data.error, 'error');
+                statusBadge.textContent = 'Failed';
+                statusBadge.className = 'status-badge status-failed';
+                eventSource.close();
+            });
+        }
+        
+        function addLogEntry(message, level = 'info') {
+            const progressLog = document.getElementById('progressLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-${level}">${message}</span>
+            `;
+            
+            progressLog.appendChild(entry);
+            progressLog.scrollTop = progressLog.scrollHeight;
+        }
+        
+        async function loadTranscription() {
+            try {
+                const response = await fetch(`${API_BASE}/audio/transcription/${currentFile}`);
+                const result = await response.json();
+                
+                document.getElementById('jsonEditor').value = JSON.stringify(result.transcription, null, 2);
+                document.getElementById('editorSection').style.display = 'block';
+            } catch (error) {
+                alert('Failed to load transcription: ' + error.message);
+            }
+        }
+        
+        // Align audio
+        document.getElementById('alignBtn').addEventListener('click', async () => {
+            try {
+                const editedJson = JSON.parse(document.getElementById('jsonEditor').value);
+                
+                const response = await fetch(`${API_BASE}/audio/align`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: currentFile,
+                        edited_json: editedJson
+                    })
+                });
+                
+                const result = await response.json();
+                
+                // Connect to alignment SSE
+                connectAlignmentSSE(result.task_id);
+            } catch (error) {
+                alert('Alignment failed: ' + error.message);
+            }
+        });
+        
+        function connectAlignmentSSE(taskId) {
+            const alignSource = new EventSource(`${API_BASE}/sse/stream/${taskId}`);
+            
+            alignSource.addEventListener('complete', (e) => {
+                const data = JSON.parse(e.data);
+                addLogEntry(`Alignment complete! Removed ${data.removed_segments} segments`, 'success');
+                alignSource.close();
+                
+                // Show download
+                const downloadSection = document.getElementById('downloadSection');
+                const downloadLink = document.getElementById('downloadLink');
+                const outputFile = currentFile.replace('.m4a', '_edited.m4a');
+                downloadLink.href = `${API_BASE}/audio/download/${outputFile}`;
+                downloadSection.style.display = 'block';
+            });
+        }
+        
+        // Download JSON
+        document.getElementById('downloadJsonBtn').addEventListener('click', () => {
+            const json = document.getElementById('jsonEditor').value;
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFile.replace('.m4a', '_edited.json');
+            a.click();
+        });
+    </script>
+</body>
+</html>

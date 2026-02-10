@@ -19,6 +19,12 @@ conda_update:
 conda_remove:
 	conda remove -y -n ForceAlignmentCutter --all
 
+run_api:
+	./start_server.sh
+
+run_api_dev:
+	conda run --no-capture-output -n ForceAlignmentCutter uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+
 run_server:
 	conda run --no-capture-output -n ForceAlignmentCutter gunicorn -k uvicorn.workers.UvicornWorker src.main:app
 
@@ -38,3 +44,41 @@ cuda:
 	sudo apt-get update
 	sudo apt-get -y install cuda-toolkit-12-9
 	rm cuda-keyring_1.1-1_all.deb
+
+# Docker commands
+docker-build:
+	./docker.sh build
+
+docker-up:
+	./docker.sh up
+
+docker-down:
+	./docker.sh down
+
+docker-logs:
+	./docker.sh logs
+
+docker-shell:
+	./docker.sh shell
+
+docker-restart:
+	./docker.sh restart
+
+docker-clean:
+	./docker.sh clean
+
+# Docker production commands
+docker-prod-build:
+	./docker.sh prod-build
+
+docker-prod-up:
+	./docker.sh prod-up
+
+docker-prod-down:
+	./docker.sh prod-down
+
+docker-prod-logs:
+	./docker.sh prod-logs
+
+.PHONY: docker-build docker-up docker-down docker-logs docker-shell docker-restart docker-clean \
+        docker-prod-build docker-prod-up docker-prod-down docker-prod-logs
